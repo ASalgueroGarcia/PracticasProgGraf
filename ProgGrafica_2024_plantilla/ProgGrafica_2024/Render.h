@@ -8,10 +8,10 @@ typedef struct {
     char** buffer;
 } Render;
 
-// Declaración de funciones
+// Declaraciï¿½n de funciones
 void resetBuffer(Render& r);
 
-// Método encargado de crear el render
+// Mï¿½todo encargado de crear el render
 Render make_render(int width, int height) {
 
     Render r;
@@ -27,7 +27,7 @@ Render make_render(int width, int height) {
     return r;
 }
 
-// Método encargado de reiniciar el buffer
+// Mï¿½todo encargado de reiniciar el buffer
 void resetBuffer(Render& r) {
 
     for (int i = 0; i < r.height; i++) {
@@ -37,7 +37,7 @@ void resetBuffer(Render& r) {
     }
 }
 
-// Método encargado de activar el pixel en la matriz
+// Mï¿½todo encargado de activar el pixel en la matriz
 void PutPixel(Render& r, int x, int y) {
 
     int cx = r.width / 2;
@@ -52,7 +52,7 @@ void PutPixel(Render& r, int x, int y) {
     r.buffer[row][col] = 1;
 }
 
-// Método que muestra por terminal el estado actual del buffer
+// Mï¿½todo que muestra por terminal el estado actual del buffer
 void Draw(const Render& r) {
 
     for (int i = 0; i < r.height; i++) {
