@@ -2,6 +2,8 @@
 
 void Object3D::createTriangle()
 {
+	objId++;
+
 	vertexList = {
 		{ 0, 0.5, 0, 1 },		// vertice superior
 		{ 0.5, -0.5, 0, 1 },	// vertice inferior derecho
