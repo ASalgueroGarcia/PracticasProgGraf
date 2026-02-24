@@ -32,9 +32,6 @@
     <ClInclude Include="MathLib.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Render.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="Vertex.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -48,6 +45,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="InputManager.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Render.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
