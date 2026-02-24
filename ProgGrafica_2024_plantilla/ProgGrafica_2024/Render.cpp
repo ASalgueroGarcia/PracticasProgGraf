@@ -3,6 +3,7 @@
 Render::Render(float anchura, float altura) 
 {
 	this->window = glfwCreateWindow(anchura, altura, "Triangulos Rotando", nullptr, nullptr);
+	initGL();
 }
 
 void Render::initGL()

@@ -23,6 +23,7 @@
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="MainEntrega1.cpp" />
     <ClCompile Include="Object3D.cpp" />
+    <ClCompile Include="Render.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
