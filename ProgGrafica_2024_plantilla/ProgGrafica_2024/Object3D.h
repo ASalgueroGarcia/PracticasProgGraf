@@ -10,6 +10,7 @@ using namespace std;
 class Object3D
 {
 public:
+	unsigned int objId;
 	Vector4f posicion;
 	Vector4f rotacion;
 	Vector4f escala;

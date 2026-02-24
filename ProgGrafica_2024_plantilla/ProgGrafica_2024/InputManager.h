@@ -4,6 +4,7 @@
 
 class InputManager
 {
+public:
 	/// <summary>
 	/// Mapa que guarda el estado del teclado. Se puede consultar si una tecla está pulsada o no
 	/// </summary>
