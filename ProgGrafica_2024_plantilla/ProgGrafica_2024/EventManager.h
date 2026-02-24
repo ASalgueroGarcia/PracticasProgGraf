@@ -11,7 +11,5 @@ public:
 
 	static void initEventManager(GLFWwindow* window);
 	static void keyboardManager(GLFWwindow* window, int key, int scancode, int action, int mods); //eventos de teclado
-	static void mouseManager(); //movimientos de raton
 	static void updateEvents();
 };
-

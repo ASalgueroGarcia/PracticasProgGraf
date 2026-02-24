@@ -6,6 +6,9 @@
 
 class Render
 {
+public:
+	Render(float anchura, float altura);
+
 	typedef struct {
 		unsigned int bufferId;
 		unsigned int vertexBufferId;
@@ -27,7 +30,7 @@ class Render
 	/// </summary>
 	std::map<int, bufferObject_t> bufferList;
 
-	Render(float anchura, float altura);
+	
 
 	/// <summary>
 	/// La clase render recibía en su constructor el tamaño del frameBuffer (coincide con la
@@ -63,4 +66,3 @@ class Render
 	/// </summary>
 	void mainLoop();
 };
-
