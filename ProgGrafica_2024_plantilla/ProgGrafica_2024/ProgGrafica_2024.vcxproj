@@ -20,7 +20,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EventManager.cpp" />
+    <ClCompile Include="GladImplementation.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="Object3D.cpp" />
     <ClCompile Include="Render.cpp" />
   </ItemGroup>
