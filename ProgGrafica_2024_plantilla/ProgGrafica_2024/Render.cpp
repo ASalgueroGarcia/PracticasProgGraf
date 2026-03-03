@@ -1,9 +1,12 @@
 #include "Render.h"
-#include "common.h"
+#include "Object3D.h"
+#include "EventManager.h"
+#include <cstring>
+#include <algorithm>
 
-
-Render::Render(float anchura, float altura) 
+Render::Render(float anchura, float altura)
 {
+	// Crear ventana (si necesitas hints específicos muévelos antes de crear la ventana)
 	this->window = glfwCreateWindow(anchura, altura, "Triangulos Rotando", nullptr, nullptr);
 	initGL();
 }
@@ -12,46 +15,61 @@ void Render::initGL()
 {
 	glfwMakeContextCurrent(window);
 	gladLoadGL(glfwGetProcAddress);
+
+	// Ajustar viewport al tamaño real del framebuffer
+	int fbw = 0, fbh = 0;
+	glfwGetFramebufferSize(window, &fbw, &fbh);
+	if (fbw > 0 && fbh > 0) {
+		glViewport(0, 0, fbw, fbh);
+	}
+
+	// Evitar permitir redimensionado (idealmente antes de crear la ventana)
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	InputManager::init(this->window);
+	// Inicializar gestor de eventos (Object3D::move lee EventManager::keyMap)
+	EventManager::initEventManager(this->window);
 }
 
 void Render::putObject(Object3D* obj)
 {
 	// generar buffers
-	bufferObject_t bo = { -1,-1,-1 };
-	glGenVertexArrays(1, &bo.bufferId); // generar lista de buffers
-	glGenBuffers(1, &bo.vertexBufferId); // generar un buffer de vertices
-	glGenBuffers(1, &bo.indexBufferId); // generar un buffer de IDs de vertices
+	bufferObject_t bo = { 0, 0, 0 };
+	glGenVertexArrays(1, &bo.bufferId);       // VAO
+	glGenBuffers(1, &bo.vertexBufferId);      // VBO
+	glGenBuffers(1, &bo.indexBufferId);       // EBO
 
-	// copiar datos
-	glBindVertexArray(bo.bufferId); // activar lista de buffers
-	glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId); // activar buffer de vertices
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_t) * obj->vertexList.size(), obj->vertexList.data(), GL_STATIC_DRAW); // copia los datos al buffer activo (vertices)
+	// bind VAO
+	glBindVertexArray(bo.bufferId);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId); // activar array de indices
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * obj->idList.size(), obj->idList.data(), GL_STATIC_DRAW); // copia datos al buffer activo (indices)
+	// VBO
+	glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_t) * obj->vertexList.size(), obj->vertexList.data(), GL_STATIC_DRAW);
 
-	/*
-	// Lectura de vertices
+	// EBO
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * obj->idList.size(), obj->idList.data(), GL_STATIC_DRAW);
+
+	// Configurar atributo de vértice (posición vec4 en location 0)
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(
-		0,                          // location en el shader
-		4,                          // 4 floats (x,y,z,w)
+		0,                      // location
+		4,                      // 4 floats (x,y,z,w)
 		GL_FLOAT,
 		GL_FALSE,
 		sizeof(vertex_t),
 		(void*)0
 	);
-	*/
-	// guardar IDs
-	bufferList[obj->objId] = bo;
 
-	//objectList.push_back(*obj);
+	// Desvincular VAO por seguridad (EBO queda referenciado por el VAO)
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	// almacenar en mapa y en la lista de objetos
+	bufferList[obj->objId] = bo;
+	objectList.push_back(*obj);
 }
 
-// Eliminar un objeto
 void Render::removeObject(Object3D* obj)
 {
 	// Buscar los buffers asociados al objeto
@@ -81,7 +99,6 @@ void Render::removeObject(Object3D* obj)
 	);
 }
 
-// Función encargada de dibujar un frame completo en la ventana
 void Render::DrawGL()
 {
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -93,6 +110,7 @@ void Render::DrawGL()
 
 		// Transformar vértices en CPU
 		std::vector<vertex_t> transformedVertices;
+		transformedVertices.reserve(obj.vertexList.size());
 
 		for (auto& v : obj.vertexList)
 		{
@@ -108,17 +126,18 @@ void Render::DrawGL()
 			transformedVertices.data(),
 			GL_DYNAMIC_DRAW);
 
-		// Dibujar
+		// Dibujar usando VAO asociado
 		glBindVertexArray(bo.bufferId);
 
 		glDrawElements(GL_TRIANGLES,
-			obj.idList.size(),
+			static_cast<GLsizei>(obj.idList.size()),
 			GL_UNSIGNED_INT,
 			0);
+
+		glBindVertexArray(0);
 	}
 }
 
-// Función principal
 void Render::mainLoop()
 {
 	float lastTime = glfwGetTime();	// Tiempo inicial

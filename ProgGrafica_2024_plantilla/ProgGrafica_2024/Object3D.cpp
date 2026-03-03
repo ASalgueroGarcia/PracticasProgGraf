@@ -1,24 +1,31 @@
 #include "Object3D.h"
+#include "EventManager.h"
+
+// Generador simple de IDs único por proceso
+static unsigned int nextObjectId = 1;
 
 void Object3D::createTriangle()
 {
-	objId++;
+	// Asignar ID único
+	objId = nextObjectId++;
 
+	// Inicializar vértices explícitamente
 	vertexList = {
-		{ 0.0f, 0.5f, 0.0f, 1.0f },		// vertice superior
-		{ 0.5f, -0.5f, 0.0f, 1.0f },	// vertice inferior derecho
-		{ -0.5f, -0.5f, 0.0f, 1.0f }	// vertice inferior izq
+		vertex_t{ make_vector4f(0.0f, 0.5f, 0.0f, 1.0f) },		// vértice superior
+		vertex_t{ make_vector4f(0.5f, -0.5f, 0.0f, 1.0f) },	// vértice inferior derecho
+		vertex_t{ make_vector4f(-0.5f, -0.5f, 0.0f, 1.0f) }	// vértice inferior izq
 	};
 
-	idList = { 1,2,3};
+	// Indices en base 0
+	idList = { 0, 1, 2 };
 }
 
 void Object3D::move(double timeStep)
 {
-	auto speed = 0.25;
+	auto speed = 0.25f;
 
-	if (EventManager::keyMap[GLFW_KEY_D]) rotacion.y += speed * timeStep;
-	if (EventManager::keyMap[GLFW_KEY_A]) rotacion.y -= speed * timeStep;
+	if (EventManager::keyMap[GLFW_KEY_D]) rotacion.y += speed * static_cast<float>(timeStep);
+	if (EventManager::keyMap[GLFW_KEY_A]) rotacion.y -= speed * static_cast<float>(timeStep);
 
 	updateModelMatrix();
 }

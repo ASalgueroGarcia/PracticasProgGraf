@@ -16,7 +16,7 @@ void EventManager::keyboardManager(GLFWwindow* window, int key, int scancode, in
 		EventManager::keyMap[key] = false;
 		break;
 	default:
-		cout << "Evento de teclado no gestionado: " << action << endl;
+		// Sin mensajes de depuración
 		break;
 	}
 }
