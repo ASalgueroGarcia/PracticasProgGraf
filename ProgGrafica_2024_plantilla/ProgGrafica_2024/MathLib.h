@@ -14,18 +14,18 @@ typedef struct {
 	};
 }Vector4f;
 
-// ========== Métodos Vector4f ==========
+// ========== M?todos Vector4f ==========
 
-// Método que crea un vector
-Vector4f make_vector4f(float x, float y, float z, float w) {
+// M?todo que crea un vector
+inline Vector4f make_vector4f(float x, float y, float z, float w) {
 	Vector4f vres;
 	vres.x = x, vres.y = y, vres.z = z,	vres.w = w;
 
 	return vres;
 }
 
-// Método que normaliza un vector
-Vector4f normalize(Vector4f v) {
+// M?todo que normaliza un vector
+inline Vector4f normalize(Vector4f v) {
 	float modulo = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 
 	if (modulo > 0.0f) {
@@ -35,22 +35,22 @@ Vector4f normalize(Vector4f v) {
 	return v;
 }
 
-// Métodos de operaciones de vectores
-Vector4f operator +(Vector4f v1, Vector4f v2) {
+// M?todos de operaciones de vectores
+inline Vector4f operator +(Vector4f v1, Vector4f v2) {
 	Vector4f vres = { v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w };
 	return vres;
 }
 
-Vector4f operator -(Vector4f v1, Vector4f v2) {
+inline Vector4f operator -(Vector4f v1, Vector4f v2) {
 	Vector4f vres = { v1.x - v2.x, v1.y - v2.y, v1.z - v2.z, v1.w - v2.w };
 	return vres;
 }
 
-float dot_product(Vector4f v1, Vector4f v2) {
-	return v1.x * v2.x + v1.y* v2.y + v1.z* v2.z + v1.w* v2.w;
+inline float dot_product(Vector4f v1, Vector4f v2) {
+	return v1.x * v2.x + v1.y* v2.y + v1.z * v2.z + v1.w* v2.w;
 }
 
-Vector4f cross_product(Vector4f v1, Vector4f v2) {
+inline Vector4f cross_product(Vector4f v1, Vector4f v2) {
 	return make_vector4f(v1.y*v2.z - v1.z*v2.y, -(v1.x*v2.z - v1.z*v2.x), v1.x*v2.y - v1.y*v2.x, 0.0f);
 }
 
@@ -62,10 +62,10 @@ typedef struct {
 	};
 }Matriz4x4f;
 
-// ========== Métodos matriz 4x4 ==========
+// ========== M?todos matriz 4x4 ==========
 
-// Operador * necesario para la rotación
-Matriz4x4f operator *(Matriz4x4f m1, Matriz4x4f m2) {
+// Operador * necesario para la rotaci?n
+inline Matriz4x4f operator *(Matriz4x4f m1, Matriz4x4f m2) {
 	Matriz4x4f mres{};
 
 	for (int row = 0; row < 4; row++) {
@@ -79,16 +79,16 @@ Matriz4x4f operator *(Matriz4x4f m1, Matriz4x4f m2) {
 	return mres;
 }
 
-// Método que crea una matriz de tipo identidad
-Matriz4x4f make_identity() {
+// M?todo que crea una matriz de tipo identidad
+inline Matriz4x4f make_identity() {
 	Matriz4x4f matrix{};
 	matrix.matV[0].x = 1, matrix.matV[1].y = 1, matrix.matV[2].z = 1, matrix.matV[3].w = 1;
 
 	return matrix;
 }
 
-// Método que crea una matriz de traslación de N unidades en los ejes x, y, z
-Matriz4x4f make_translate(float x, float y, float z) {
+// M?todo que crea una matriz de traslaci?n de N unidades en los ejes x, y, z
+inline Matriz4x4f make_translate(float x, float y, float z) {
 	Matriz4x4f matrix = make_identity();
 
 	matrix.matV[0].w = x, matrix.matV[1].w = y, matrix.matV[2].w = z;
@@ -96,8 +96,8 @@ Matriz4x4f make_translate(float x, float y, float z) {
 	return matrix;
 }
 
-// Método que crea una matriz de rotación de N radianes en los ejes x, y, z
-Matriz4x4f make_rotate(float angleX, float angleY, float angleZ) {
+// M?todo que crea una matriz de rotaci?n de N radianes en los ejes x, y, z
+inline Matriz4x4f make_rotate(float angleX, float angleY, float angleZ) {
 	Matriz4x4f rotationX = make_identity();
 	Matriz4x4f rotationY = make_identity();
 	Matriz4x4f rotationZ = make_identity();
@@ -107,19 +107,19 @@ Matriz4x4f make_rotate(float angleX, float angleY, float angleZ) {
 	float cosY = cos(angleY), sinY = sin(angleY);
 	float cosZ = cos(angleZ), sinZ = sin(angleZ);
 
-	// Rotación en X
+	// Rotaci?n en X
 	rotationX.matV[1].y = cosX;
 	rotationX.matV[1].z = -sinX;
 	rotationX.matV[2].y = sinX;
 	rotationX.matV[2].z = cosX;
 
-	// Rotación en Y
+	// Rotaci?n en Y
 	rotationY.matV[0].x = cosY;
 	rotationY.matV[0].z = sinY;
 	rotationY.matV[2].x = -sinY;
 	rotationY.matV[2].z = cosY;
 
-	// Rotación en Z
+	// Rotaci?n en Z
 	rotationZ.matV[0].x = cosZ;
 	rotationZ.matV[0].y = -sinZ;
 	rotationZ.matV[1].x = sinZ;
@@ -130,8 +130,8 @@ Matriz4x4f make_rotate(float angleX, float angleY, float angleZ) {
 	return matrix;
 }
 
-// Método que crea una matriz de escalado de N unidades en los ejes x, y, z
-Matriz4x4f make_scale(float x, float y, float z) {
+// M?todo que crea una matriz de escalado de N unidades en los ejes x, y, z
+inline Matriz4x4f make_scale(float x, float y, float z) {
 	Matriz4x4f matrix = make_identity();
 	
 	matrix.matV[0].x = x, matrix.matV[1].y = y, matrix.matV[2].z = z;
@@ -139,8 +139,8 @@ Matriz4x4f make_scale(float x, float y, float z) {
 	return matrix;
 }
 
-// Multiplicación vector por matriz
-Vector4f operator *(Matriz4x4f matrix, Vector4f vector) {
+// Multiplicaci?n vector por matriz
+inline Vector4f operator *(Matriz4x4f matrix, Vector4f vector) {
 	Vector4f res{};
 	for (int row = 0; row < 4; row++) {
 		res.v[row] =
@@ -155,8 +155,8 @@ Vector4f operator *(Matriz4x4f matrix, Vector4f vector) {
 
 // ========== Cuaterniones ==========
 
-// Método encargado de crear cuaternión de rotación a partir de eje y ángulo
-Vector4f make_quaternion(float x, float y, float z, float angle) {
+// M?todo encargado de crear cuaterni?n de rotaci?n a partir de eje y ?ngulo
+inline Vector4f make_quaternion(float x, float y, float z, float angle) {
 
 	// Normalizar eje
 	float length = sqrt(x * x + y * y + z * z);
@@ -175,8 +175,8 @@ Vector4f make_quaternion(float x, float y, float z, float angle) {
 	return make_vector4f(x * s, y * s, z * s, c);
 }
 
-// Método encargado de crear una matriz de rotación a partir de un cuaternión
-Matriz4x4f make_rotate(Vector4f vector) {
+// M?todo encargado de crear una matriz de rotaci?n a partir de un cuaterni?n
+inline Matriz4x4f make_rotate(Vector4f vector) {
 
 	Matriz4x4f matrix = make_identity();
 

@@ -1,4 +1,6 @@
 #include "Render.h"
+#include "common.h"
+
 
 Render::Render(float anchura, float altura) 
 {
