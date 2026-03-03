@@ -6,7 +6,6 @@
 
 Render::Render(float anchura, float altura)
 {
-	// Crear ventana (si necesitas hints específicos muévelos antes de crear la ventana)
 	this->window = glfwCreateWindow(anchura, altura, "Triangulos Rotando", nullptr, nullptr);
 	initGL();
 }
@@ -23,7 +22,7 @@ void Render::initGL()
 		glViewport(0, 0, fbw, fbh);
 	}
 
-	// Evitar permitir redimensionado (idealmente antes de crear la ventana)
+	// Evitar permitir redimensionado
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	// Inicializar gestor de eventos (Object3D::move lee EventManager::keyMap)
@@ -34,31 +33,21 @@ void Render::putObject(Object3D* obj)
 {
 	// generar buffers
 	bufferObject_t bo = { 0, 0, 0 };
-	glGenVertexArrays(1, &bo.bufferId);       // VAO
-	glGenBuffers(1, &bo.vertexBufferId);      // VBO
-	glGenBuffers(1, &bo.indexBufferId);       // EBO
+	glGenVertexArrays(1, &bo.bufferId);       
+	glGenBuffers(1, &bo.vertexBufferId);      
+	glGenBuffers(1, &bo.indexBufferId);       
 
-	// bind VAO
 	glBindVertexArray(bo.bufferId);
 
-	// VBO
 	glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_t) * obj->vertexList.size(), obj->vertexList.data(), GL_STATIC_DRAW);
 
-	// EBO
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * obj->idList.size(), obj->idList.data(), GL_STATIC_DRAW);
 
 	// Configurar atributo de vértice (posición vec4 en location 0)
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(
-		0,                      // location
-		4,                      // 4 floats (x,y,z,w)
-		GL_FLOAT,
-		GL_FALSE,
-		sizeof(vertex_t),
-		(void*)0
-	);
+	glVertexAttribPointer(0, 4,GL_FLOAT,GL_FALSE,sizeof(vertex_t),(void*)0);
 
 	// Desvincular VAO por seguridad (EBO queda referenciado por el VAO)
 	glBindVertexArray(0);

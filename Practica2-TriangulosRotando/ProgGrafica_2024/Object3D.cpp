@@ -11,7 +11,7 @@ void Object3D::createTriangle()
 
 	// Inicializar vértices explícitamente
 	vertexList = {
-		vertex_t{ make_vector4f(0.0f, 0.5f, 0.0f, 1.0f) },		// vértice superior
+		vertex_t{ make_vector4f(0.0f, 0.5f, 0.0f, 1.0f) },	// vértice superior
 		vertex_t{ make_vector4f(0.5f, -0.5f, 0.0f, 1.0f) },	// vértice inferior derecho
 		vertex_t{ make_vector4f(-0.5f, -0.5f, 0.0f, 1.0f) }	// vértice inferior izq
 	};
@@ -22,7 +22,7 @@ void Object3D::createTriangle()
 
 void Object3D::move(double timeStep)
 {
-	auto speed = 0.25f;
+	auto speed = 2.f;
 
 	if (EventManager::keyMap[GLFW_KEY_D]) rotacion.y += speed * static_cast<float>(timeStep);
 	if (EventManager::keyMap[GLFW_KEY_A]) rotacion.y -= speed * static_cast<float>(timeStep);
