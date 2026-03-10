@@ -24,8 +24,8 @@ void Object3D::move(double timeStep)
 {
 	auto speed = 2.f;
 
-	if (EventManager::keyMap[GLFW_KEY_D]) rotacion.y += speed * static_cast<float>(timeStep);
-	if (EventManager::keyMap[GLFW_KEY_A]) rotacion.y -= speed * static_cast<float>(timeStep);
+	if (EventManager::keyMap[GLFW_KEY_D]) rotacion.x += speed * static_cast<float>(timeStep);
+	if (EventManager::keyMap[GLFW_KEY_A]) rotacion.x -= speed * static_cast<float>(timeStep);
 
 	updateModelMatrix();
 }

@@ -13,8 +13,8 @@ int main()
 
 	// Crear triángulo y añadirlo al renderer
 	Object3D triangle;
-	triangle.posicion = make_vector4f(0.f, 0.f, 0.0f, 1.0f);
-	triangle.rotacion = make_vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+	triangle.posicion = make_vector4f(0.f, 1.f, 0.0f, 1.0f);
+	triangle.rotacion = make_vector4f(0.f, 0.0f, 0.0f, 0.0f);
 	triangle.escala = make_vector4f(1.0f, 1.0f, 1.0f, 0.0f);
 	triangle.createTriangle();
 
