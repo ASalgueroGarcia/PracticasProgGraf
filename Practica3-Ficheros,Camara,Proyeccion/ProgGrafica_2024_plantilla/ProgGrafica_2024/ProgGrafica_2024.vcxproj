@@ -19,7 +19,23 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MainPRGR_2024.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="EventManager.cpp" />
+    <ClCompile Include="GladImplementation.cpp" />
+    <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Object3D.cpp" />
+    <ClCompile Include="Render.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="common.h" />
+    <ClInclude Include="EventManager.h" />
+    <ClInclude Include="InputManager.h" />
+    <ClInclude Include="MathLib.h" />
+    <ClInclude Include="Object3D.h" />
+    <ClInclude Include="Render.h" />
+    <ClInclude Include="Vertex.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
