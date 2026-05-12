@@ -18,7 +18,7 @@ int main()
 	cubo.loadFromFile("data/cubo.frs");
 
 	cubo.posicion = make_vector4f(0, 0, 0, 1);
-	cubo.rotacion = make_vector4f(0.785f, 0, 0.785f, 0);
+	cubo.rotacion = make_vector4f(0, 0, 0, 0);
 	cubo.escala = make_vector4f(1, 1, 1, 0);
 
 	cubo.updateModelMatrix();
