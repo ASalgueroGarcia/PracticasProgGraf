@@ -31,7 +31,7 @@ int main()
 
     Camera cam(
         make_vector4f(0, 0, 6, 1),
-        make_vector4f(0, 0, 0, 1),
+        make_vector4f(0, 0, 0, 0),
         make_vector4f(0, 0, 0, 1),
         make_vector4f(0, 1, 0, 0),
         90.0f, 640.0f / 480.0f, 0.01f, 100.0f
@@ -40,11 +40,11 @@ int main()
 
     Light light(
         make_vector4f(0, 0, 1, 0),
-        make_vector4f(0, 0, 0, 1),
+        make_vector4f(0, 2, 2, 1),
         make_vector4f(1, 1, 1, 1),
-        0.1f,
-        0.8f,
-        0.5f
+        0.2f,
+        0.7f,
+        0.3f
     );
     renderer.putLight(&light);
 

@@ -1,6 +1,5 @@
 #version 330
 
-uniform vec3 lightDirection;
 uniform vec3 lightPosition;
 uniform vec3 lightColor;
 uniform float lightKa;
@@ -29,12 +28,12 @@ void main() {
 
     float diff = max(dot(normal, lightDir), 0.0);
 
+    vec3 ambient = lightKa * materialKa * lightColor;
+    vec3 diffuse = lightKd * materialKd * diff * lightColor;
+
     vec3 viewDir = normalize(-fWorldPos);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), float(shiny));
-
-    vec3 ambient = lightKa * materialKa * lightColor;
-    vec3 diffuse = lightKd * materialKd * diff * lightColor;
     vec3 specular = lightKs * materialKs * spec * lightColor;
 
     vec4 color;

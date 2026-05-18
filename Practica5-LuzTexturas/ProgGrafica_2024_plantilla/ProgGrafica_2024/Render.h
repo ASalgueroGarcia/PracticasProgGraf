@@ -22,7 +22,7 @@ public:
 	Light* light;
 
 	GLFWwindow* window;
-	std::vector<Object3D> objectList;
+	std::vector<Object3D*> objectList;
 	std::map<int, bufferObject_t> bufferList;
 
 	void initGL();
