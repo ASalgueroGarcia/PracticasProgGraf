@@ -1,0 +1,23 @@
+#version 330
+
+layout(location = 0) in vec4 vPos;
+layout(location = 1) in vec4 vColor;
+layout(location = 2) in vec3 vNormal;
+layout(location = 3) in vec2 vTexCoord;
+
+uniform mat4 MVP;
+uniform mat4 modelMatrix;
+
+out vec4 fColor;
+out vec3 fNormal;
+out vec2 fTexCoord;
+out vec3 fWorldPos;
+
+void main() {
+    vec4 worldPos = modelMatrix * vPos;
+    fWorldPos = worldPos.xyz;
+    gl_Position = MVP * vPos;
+    fColor = vColor;
+    fNormal = mat3(modelMatrix) * vNormal;
+    fTexCoord = vTexCoord;
+}
