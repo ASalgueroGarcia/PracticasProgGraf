@@ -28,4 +28,6 @@ public:
 	void setUniformVector3f(std::string nombre, const Vector3f& vec);
 	void setUniformFloat(std::string nombre, float value);
 	void setUniformInt(std::string nombre, int value);
+	void initLightUniforms(Light* light);
+	void initMaterialUniforms(Material* mat);
 };

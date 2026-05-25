@@ -22,11 +22,6 @@ int main()
     esfera.posicion = make_vector4f(0, 0, 0, 1);
     esfera.escala = make_vector4f(1, 1, 1, 0);
     esfera.updateModelMatrix();
-
-    for (auto& v : esfera.vertexList) {
-        v.color = make_vector4f(1.0f, 0.0f, 0.0f, 1.0f);
-    }
-
     renderer.putObject(&esfera);
 
     Cubo cubo;

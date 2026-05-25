@@ -63,6 +63,7 @@ void Program::readVarList()
 		glGetActiveAttrib(idProgram, i, 256, &length, &size, &type, name);
 		GLint location = glGetAttribLocation(idProgram, name);
 		varList[name] = location;
+		std::cout << "Atributo detectado en shader: " << name << std::endl;
 	}
 
 	glGetProgramiv(idProgram, GL_ACTIVE_UNIFORMS, &count);
@@ -72,9 +73,29 @@ void Program::readVarList()
 		glGetActiveUniform(idProgram, i, 256, &length, &size, &type, name);
 		GLint location = glGetUniformLocation(idProgram, name);
 		varList[name] = location;
+		std::cout << "Uniforme detectado en shader: " << name << std::endl;
 	}
+}
 
-	cout << "Atributo detectado en shader: " << name << endl;
+void Program::initLightUniforms(Light* light)
+{
+	if (light == nullptr) return;
+	setUniformVector3f("lightPosition", make_vector3f(light->position.x, light->position.y, light->position.z));
+	setUniformVector3f("lightColor", make_vector3f(light->color.x, light->color.y, light->color.z));
+	setUniformFloat("lightKa", light->ka);
+	setUniformFloat("lightKd", light->kd);
+	setUniformFloat("lightKs", light->ks);
+}
+
+void Program::initMaterialUniforms(Material* mat)
+{
+	if (mat == nullptr) return;
+	setUniformInt("usaTextura", mat->usaTextura ? 1 : 0);
+	setUniformInt("shiny", mat->shiny);
+	setUniformFloat("materialAlpha", mat->alpha);
+	setUniformFloat("materialKa", mat->ka);
+	setUniformFloat("materialKd", mat->kd);
+	setUniformFloat("materialKs", mat->ks);
 }
 
 void Program::use()
