@@ -1,29 +1,25 @@
 #pragma once
-#include "MathLib.h"
-#include "EventManager.h"
+#include "common.h"
+#include "libMath.h"
+#include "Colliders.h"
+
+using namespace libMath;
+using namespace std;
 
 class Camera
 {
 public:
+    vec4float pos;
+    vec4float rot;
+    vec4float lookAt;
+    vec4float lookAtPrime;
+    vec4float forward, right, up;
 
-	Vector4f pos;
-	Vector4f rot;
+    Sphere* coll = nullptr;
 
-	Vector4f lookAt;
-	Vector4f up;
+    Camera(vec4float pos, vec4float lookAt, vec4float up = { 0,1,0,0 });
+    matrix4x4f computeViewMatrix();
+    matrix4x4f computeProjectionMatrix(float zNear, float zFar, float fovy, float aspectRatio);
 
-	float fovy;
-	float aspectRatio;
-	float zNear;
-	float zFar;
-
-	Camera(Vector4f pos, Vector4f rot, Vector4f lookAt,
-		Vector4f up, float fovy, float aspectRatio,
-		float zNear, float zFar);
-
-	Matriz4x4f getMatrixLookAt();
-
-	Matriz4x4f getMatrixPerspective();
-
-	void move(double timeStep);
+    void moveObject(double timeStep);
 };

@@ -1,47 +1,58 @@
 #pragma once
-
 #include "common.h"
+#include "libMath.h"
+#include "Luz.h"
+#include "Camera.h"
+#include "Material.h"
 
+
+using namespace std;
+using namespace libMath;
+
+class ShaderProgram
+{
+public:
+    typedef enum {
+        vertex = GL_VERTEX_SHADER,
+        fragment = GL_FRAGMENT_SHADER,
+        error = -1
+    }ProgramType;
+
+    string fileName="";
+    string code="";
+    ProgramType type=error;
+
+    bool compiled = false;
+
+    unsigned int shaderID=error;
+
+    ShaderProgram(string fileName);
+    ~ShaderProgram();
+
+    void checkErrors();
+
+
+};
 class Shader
 {
 public:
-	// Variable que almacena el identificador de OpenGL para este shader
-	unsigned int idShader;
+    unsigned int programID = ShaderProgram::error;
+    vector< ShaderProgram* > programs;
+    map<string, unsigned int> varList; //lista de variables en GPU
+    bool linked = false;
+    Shader() {};
+    void addShaderProgram(string fileName);
+    void linkProgram(); //linka todos los códigos de shader compilados
+    void checkErrors(); //checkea errores de linkado
+    void useProgram() { glUseProgram(programID); }; //activa este programa linkado para uso en gpu
+    void readVarList(); //lectura de variables activas de programa
+    void setMatrix(matrix4x4f m, string matrixName); //Set de una variable de tipo matriz
+    void setLight(Luz* luz);
+    void setMaterial(Material* luz);
+    void setCamera(Camera* luz);
 
-	// Variable que almacena el nombre del fichero de texto con el código de este shader
-	std::string fileName;
-
-	// Variable que almacena el tipo de shader que se ha creado
-	GLenum type;
-
-	// Variable que almacena el código del shader
-	std::string source;
-
-	/// <summary>
-	/// Constructor de la clase. Recibe el nombre del fichero, lo guarda,
-	/// detecta el tipo de shader, lee el código fuente y lo compila.
-	/// </summary>
-	Shader(std::string fileName);
-
-	/// <summary>
-	/// Método que abre el fichero de código del shader, lo lee y lo almacena
-	/// en la variable source.
-	/// </summary>
-	void readSource();
-
-	/// <summary>
-	/// Método que compila el shader.
-	/// </summary>
-	void compileShader();
-
-	/// <summary>
-	/// Método que muestra si hay cualquier error tras compilar el shader.
-	/// </summary>
-	void checkErrors();
-
-	/// <summary>
-	/// Método que libera los datos de compilación y código del shader.
-	/// Se invocará después desde Program cuando ya esté linkado.
-	/// </summary>
-	void clean();
+    //setMaterial(...); TODO
+    //set descripción de variables uniform
+    void setAttributeData(string attribName, int count, GLenum dataType, size_t stride, void* offset);
 };
+

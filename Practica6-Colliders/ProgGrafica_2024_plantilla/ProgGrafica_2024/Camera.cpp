@@ -1,117 +1,103 @@
 #include "Camera.h"
+#include "EventManager.h"
+#include "System.h"
 
-Camera::Camera(Vector4f pos, Vector4f rot, Vector4f lookAt,
-    Vector4f up, float fovy, float aspectRatio,
-    float zNear, float zFar)
+Camera::Camera(vec4float pos, vec4float lookAt, vec4float up)
 {
     this->pos = pos;
-    this->up = up;
-    this->fovy = fovy;
-    this->aspectRatio = aspectRatio;
-    this->zNear = zNear;
-    this->zFar = zFar;
-
-    Vector4f dir = normalize(lookAt - pos);
-
-    this->rot.y = atan2(dir.x, dir.z);
-    this->rot.x = asin(dir.y);
-
+    this->rot = { 0,0,0,0 };
     this->lookAt = lookAt;
+    this->lookAtPrime = lookAt - pos;
+    this->lookAtPrime.w = 1.0f;
+    this->up = up;
+    this->forward = normalize(lookAt - pos);
+
+    coll = new Sphere();
+    coll->center = pos;
+    coll->radius = 0.125f;
+
+    particle3D* p = new particle3D();
+    p->pos = pos;
+    p->size = { 0.25f, 0.25f, 0.25f, 0.0f };
+    coll->addParticle(p);
 }
 
-Matriz4x4f Camera::getMatrixLookAt()
+matrix4x4f Camera::computeViewMatrix()
 {
-	Vector4f forward = normalize(lookAt - pos);
-	Vector4f right = normalize(cross_product(forward, up));
-	Vector4f newUp = cross_product(right, forward);
+    matrix4x4f view = make_identityf();
+    this->forward = normalize(lookAt - pos);
 
-	Matriz4x4f view = make_identity();
+    right = normalize(cross(forward, up));
+    vec4float upCamera = normalize(cross(right, forward));
+    vec4float position = make_vec4float(-dot(right, pos), -dot(upCamera, pos), dot(forward, pos), 1);
+    view.matV[0] = right;
+    view.matV[1] = upCamera;
+    view.matV[2] = -1.0f * forward;
+    view.mat2D[0][3] = position.x;
+    view.mat2D[1][3] = position.y;
+    view.mat2D[2][3] = position.z;
+    view.matV[3] = { 0,0,0,1 };
 
-	view.matV[0] = make_vector4f(right.x, right.y, right.z, -dot_product(right, pos));
-	view.matV[1] = make_vector4f(newUp.x, newUp.y, newUp.z, -dot_product(newUp, pos));
-	view.matV[2] = make_vector4f(-forward.x, -forward.y, -forward.z, dot_product(forward, pos));
-
-	return view;
+    return view;
 }
 
-Matriz4x4f Camera::getMatrixPerspective()
+matrix4x4f Camera::computeProjectionMatrix(float zNear, float zFar, float fovy, float aspectRatio)
 {
-	Matriz4x4f proj{};
-
-	// OJO: tan() usa radianes
-	float fovyRad = fovy * (3.14159265f / 180.0f);
-	float f = 1.0f / tan(fovyRad * 0.5f);
-
-	proj.matV[0].x = f / aspectRatio;
-	proj.matV[1].y = f;
-
-	proj.matV[2].z = -(zFar + zNear) / (zFar - zNear);
-	proj.matV[2].w = -(2 * zFar * zNear) / (zFar - zNear);
-
-	proj.matV[3].z = -1.0f;
-	proj.matV[3].w = 0.0f;
-
-	return proj;
+    matrix4x4f projMatrix = make_identityf();
+    projMatrix.mat2D[0][0] = 1.0f / (aspectRatio * tan(fovy * 0.5));
+    projMatrix.mat2D[1][1] = 1.0f / tan(fovy * 0.5f);
+    projMatrix.mat2D[2][2] = -(zFar + zNear) / (zFar - zNear);
+    projMatrix.mat2D[2][3] = 2.0f * zFar * zNear / (zFar - zNear);
+    projMatrix.mat2D[3][2] = -1.0f;
+    return projMatrix;
 }
 
-void Camera::move(double timeStep)
+void Camera::moveObject(double timeStep)
 {
-    static bool firstMouse = true;
-    static double lastX = 0.0;
-    static double lastY = 0.0;
+    vec4float prevPos = pos;
 
-    double xpos, ypos;
-    glfwGetCursorPos(EventManager::window, &xpos, &ypos);
-
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    double dx = xpos - lastX;
-    double dy = ypos - lastY;
-
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.002f;
-
-    // ROTACION CORREGIDA
-    rot.y -= (float)dx * sensitivity;
-    rot.x -= (float)dy * sensitivity;
-
-    float limit = 1.5f;
-    if (rot.x > limit) rot.x = limit;
-    if (rot.x < -limit) rot.x = -limit;
-
-    Vector4f forward;
-
-    forward.x = cos(rot.x) * sin(rot.y);
-    forward.y = sin(rot.x);
-    forward.z = cos(rot.x) * cos(rot.y);
-    forward.w = 0;
-
-    forward = normalize(forward);
-
-    lookAt = pos + forward;
-
-    float speed = 2.0f * (float)timeStep;
-
-    if (EventManager::keyMap[GLFW_KEY_UP])
-        pos = pos + forward * speed;
-
-    if (EventManager::keyMap[GLFW_KEY_DOWN])
-        pos = pos - forward * speed;
-
-    Vector4f right = normalize(cross_product(forward, up));
-
-    if (EventManager::keyMap[GLFW_KEY_RIGHT])
-        pos = pos + right * speed;
+    float speed = 5.0f;
+    float speedRotY = EventManager::mouseState.velX * 50.0f;
+    float speedRotX = EventManager::mouseState.velY * 100.0f;
 
     if (EventManager::keyMap[GLFW_KEY_LEFT])
-        pos = pos - right * speed;
+        pos = pos - right * speed * timeStep;
 
-    lookAt = pos + forward;
+    if (EventManager::keyMap[GLFW_KEY_RIGHT])
+        pos = pos + right * speed * timeStep;
+
+    if (EventManager::keyMap[GLFW_KEY_UP])
+        pos = pos + forward * speed * timeStep;
+
+    if (EventManager::keyMap[GLFW_KEY_DOWN])
+        pos = pos - forward * speed * timeStep;
+
+    rot.y += speedRotY * timeStep;
+    rot.x += speedRotX * timeStep;
+
+    matrix4x4f rotM = make_rotateY(rot.y) * make_rotateX(rot.x);
+    lookAt = rotM * lookAtPrime;
+    matrix4x4f trasM = make_traslate(pos.x, pos.y, pos.z);
+    lookAt = trasM * lookAt;
+
+    EventManager::mouseState.velY = 0;
+    EventManager::mouseState.velX = 0;
+
+    coll->updateCollider(make_traslate(pos.x, pos.y, pos.z));
+
+    bool collisionFound = false;
+    for (auto& obj : System::render->objectList)
+    {
+        if (!obj->active || !obj->coll)
+            continue;
+
+        if (coll->collisionTest(obj->coll))
+        {
+            collisionFound = true;
+            break;
+        }
+    }
+
+    if (collisionFound)
+        pos = prevPos;
 }

@@ -1,18 +1,28 @@
 #pragma once
-
 #include "common.h"
-#include <string>
-#include <vector>
-#include <iostream>
+using namespace std;
+
+
+typedef struct {
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+    unsigned char a;
+}pixel_t;
+
 
 class Texture
 {
 public:
-    std::string textureName;
-    unsigned int textureId;
-    int width;
-    int height;
-    std::vector<unsigned char> rawImage;
-    Texture(std::string fileName);
-    void updateTexture();
+    int w=0, h=0;
+    unsigned int GLId=0xFFFFFFFF; //identificador opengl
+    string fileName = "";
+    vector <pixel_t> rawImage;
+
+    Texture(int w, int h, pixel_t color={0xFF,0,0,0xFF});
+    Texture(string fileName);
+
+    void updateTexture(); //copiar datos agpu
+
 };
+

@@ -1,40 +1,79 @@
 #pragma once
-
-#include "MathLib.h"
-#include "Vertex.h"
+#include "libMath.h"
 #include "common.h"
-#include "EventManager.h"
-#include "Program.h"
+#include "Shader.h"
 #include "Material.h"
-#include <string>
-#include <vector>
+#include "Colliders.h"
+
+typedef enum {
+    objectType,
+    shipType,
+    bulletType,
+    enemyType
+}objTypes;
+
 
 using namespace std;
+using namespace libMath;
+
+typedef struct {
+    vec4float posicion;
+    vec4float color;
+    vec4float normal;
+    vec4float texturaCoords;
+}vertex_t;
 
 class Object3D
 {
 public:
-	unsigned int objId;
-	Vector4f posicion;
-	Vector4f rotacion;
-	Vector4f escala;
-	Matriz4x4f modelMatrix;
-	Program* prg;
-	std::string attrPosName;
-	std::string attrColorName;
-	std::string attrNormalName;
-	std::string attrTexCoordName;
-	std::string uniformMVPName;
+    static inline unsigned int idCounter;
 
-	Material* mat;
+    unsigned int objectId;
+    objTypes type = objectType;
 
-	vector<vertex_t> vertexList;
-	vector<int> idList;
+    vector<vertex_t> vertexList;
+    vector<unsigned int> indexList;
+    vec4float posicion = { 0,0,0,1 };
+    vec4float rotacion = { 0,0,0,1 };
+    vec4float escalado = { 1,1,1,1 };
 
-	Object3D();
-	~Object3D();
-	void createTriangle();
-	void loadFromFile(const char* fileName);
-	virtual void move(double timeStep);
-	void updateModelMatrix();
+    Shader* prg = nullptr;
+    Material* mat = new Material();
+    string frsModel = "";
+
+    // Collider de tipo esfera para este objeto
+    Sphere* coll = nullptr;
+
+    // true = activo en el sistema; false = sera eliminado
+    bool active = true;
+
+    Object3D();
+    Object3D(string frsModel);
+    void loadFromFile();
+
+    matrix4x4f computeModelMatrix();
+    virtual void moveObject(double timeStep) {};
+
+    void computeNormals();
+
+};
+
+class Ship : public Object3D {
+public:
+    Ship(string frsFile) : Object3D(frsFile) { this->type = shipType; };
+    void moveObject(double timeStep);
+};
+
+class Bullet : public Object3D {
+public:
+    vec4float direccion = { 0,0,0,0 };
+    Bullet(string frsFile) : Object3D(frsFile) { this->type = bulletType; };
+    void moveObject(double timeStep);
+};
+
+
+class Enemy : public Object3D {
+public:
+    Enemy(string frsFile) : Object3D(frsFile) { this->type = enemyType; };
+    void moveObject(double timeStep);
 };

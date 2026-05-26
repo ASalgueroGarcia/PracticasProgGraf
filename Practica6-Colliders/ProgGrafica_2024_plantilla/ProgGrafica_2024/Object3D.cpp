@@ -1,257 +1,330 @@
 #include "Object3D.h"
 #include "EventManager.h"
 
-static unsigned int nextObjectId = 1;
-
 Object3D::Object3D()
 {
-    posicion = make_vector4f(0, 0, 0, 1);
-    rotacion = make_vector4f(0, 0, 0, 0);
-    escala = make_vector4f(1, 1, 1, 0);
-    modelMatrix = make_identity();
-    mat = nullptr;
-    uniformMVPName = "MVP";
+    objectId = idCounter++;
 
-    prg = new Program();
-    prg->addShader("data/program.vertex");
-    prg->addShader("data/program.fragment");
-    prg->linkProgram();
-    prg->readVarList();
-}
-
-Object3D::~Object3D()
-{
-    if (prg != nullptr)
+    vertexList =
     {
-        delete prg;
-        prg = nullptr;
-    }
-    if (mat != nullptr)
-    {
-        delete mat;
-        mat = nullptr;
-    }
-}
-
-void Object3D::createTriangle()
-{
-    objId = nextObjectId++;
-
-    vertexList = {
-        vertex_t{ make_vector4f(0.0f, 0.5f, 0.0f, 1.0f), make_vector4f(1.0f, 0.0f, 0.0f, 1.0f), make_vector3f(0.0f, 0.0f, 1.0f), make_vector2f(0.5f, 1.0f) },
-        vertex_t{ make_vector4f(0.5f, -0.5f, 0.0f, 1.0f), make_vector4f(0.0f, 1.0f, 0.0f, 1.0f), make_vector3f(0.0f, 0.0f, 1.0f), make_vector2f(1.0f, 0.0f) },
-        vertex_t{ make_vector4f(-0.5f, -0.5f, 0.0f, 1.0f), make_vector4f(0.0f, 0.0f, 1.0f, 1.0f), make_vector3f(0.0f, 0.0f, 1.0f), make_vector2f(0.0f, 0.0f) }
+        {{ -0.5,  0.5, 0, 1 }, {1,0,0,1}},
+        {{  0.5,  0.5, 0, 1 }, {1,0,0,1}},
+        {{ -0.5, -0.5, 0, 1 }, {1,1,0,1}},
+        {{  0.5, -0.5, 0, 1 }, {0,0,1,1}}
     };
 
-    idList = { 0, 1, 2 };
+    indexList = { 0,1,2, 2,1,3 };
+
+    prg = new Shader();
+    prg->addShaderProgram("data/shader.vertex");
+    prg->addShaderProgram("data/shader.fragment");
+    prg->linkProgram();
+
+    computeNormals();
+}
+
+Object3D::Object3D(string frsModel)
+{
+    objectId = idCounter++;
+    this->frsModel = frsModel;
+    loadFromFile();
+}
+
+matrix4x4f Object3D::computeModelMatrix()
+{
+    matrix4x4f model =
+        make_traslate(posicion.x, posicion.y, posicion.z) *
+        make_rotate(rotacion.x, rotacion.y, rotacion.z) *
+        make_scale(escalado.x, escalado.y, escalado.z);
+    return model;
+}
+
+void Object3D::computeNormals()
+{
+    for (auto& v : vertexList)
+        v.normal = { 0,0,0,0 };
+
+    auto it = indexList.begin();
+    while (it != indexList.end()) {
+        int v1 = *it; it++;
+        int v2 = *it; it++;
+        int v3 = *it; it++;
+
+        vec4float arista1 = normalize(vertexList[v2].posicion - vertexList[v1].posicion);
+        vec4float arista3 = normalize(vertexList[v3].posicion - vertexList[v1].posicion);
+        vec4float normal = cross(arista1, arista3);
+
+        vertexList[v1].normal = vertexList[v1].normal + normal;
+        vertexList[v2].normal = vertexList[v2].normal + normal;
+        vertexList[v3].normal = vertexList[v3].normal + normal;
+    }
+
+    for (auto& v : vertexList)
+        v.normal = normalize(v.normal);
 }
 
 
-static string trimLine(const string& s)
+#define skipComments()\
+lineReader = istringstream(line);\
+ do {\
+    std::getline(f >> std::ws, line);\
+ } while (line[0] == '\xef' || line[0] == '#');\
+lineReader = istringstream(line);\
+
+#define readMultipleData()\
+vector<float> data;\
+while (!lineReader.eof() && lineReader.tellg() != -1)\
+{\
+    float d = 0;\
+    lineReader >> d;\
+    data.push_back(d);\
+}\
+data.pop_back();\
+
+
+void Object3D::loadFromFile()
 {
-    size_t start = 0;
-    while (start < s.size() && isspace((unsigned char)s[start])) start++;
+    typedef enum { vertices, faces, normals, colors, textureCoords, done } dataTypesReading;
+    string textureFile, vertexShader, fragmentShader;
 
-    size_t end = s.size();
-    while (end > start && isspace((unsigned char)s[end - 1])) end--;
-
-    return s.substr(start, end - start);
-}
-
-// Returns true for empty lines and comment lines (lines starting with '#' or
-// any non-ASCII character such as the euro-sign comment marker used in FRS files).
-static bool isFrsComment(const string& s)
-{
-    if (s.empty()) return true;
-    unsigned char c = (unsigned char)s[0];
-    return c == '#' || c > 127;
-}
-
-// Parse all whitespace-separated floats in a string.
-// Handles values with trailing non-numeric suffixes like "1.0f".
-static vector<float> parseFloats(const string& s)
-{
-    vector<float> r;
-    istringstream ss(s);
-    float v;
-    while (ss >> v)
-        r.push_back(v);
-    return r;
-}
-
-void Object3D::loadFromFile(const char* fileName)
-{
-    objId = nextObjectId++;
-
-    vertexList.clear();
-    idList.clear();
-
-    ifstream file(fileName);
-    if (!file.is_open())
+    std::ifstream f(frsModel, std::ios::binary);
+    if (!f.is_open())
     {
-        cout << "ERROR abriendo fichero: " << fileName << "\n";
+        cout << "ERROR: no se pudo abrir " << frsModel << "\n";
         return;
     }
 
-    string line;
-
-    // Advance to the next non-comment, non-empty line.
-    auto nextMeaningful = [&]() -> bool {
-        while (getline(file, line)) {
-            line = trimLine(line);
-            if (!isFrsComment(line)) return true;
-        }
-        return false;
+    // Lee la siguiente linea no-comentario (comentarios empiezan por 0xE2 = euro UTF-8)
+    auto nextLine = [&](string& line) {
+        do {
+            if (!std::getline(f >> std::ws, line)) return;
+            // quitar \r final si existe
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+        } while (!line.empty() && (unsigned char)line[0] == 0xE2);
         };
 
-    // ---- Vertex positions ----
-    if (!nextMeaningful()) return;
-    int nVerts = stoi(line);
+    // Parsea floats de una linea ignorando tokens con letras (ej: "1.0f")
+    auto parseFloats = [](const string& line, vector<float>& out) {
+        istringstream ss(line);
+        string token;
+        while (ss >> token) {
+            bool hasAlpha = false;
+            for (char c : token)
+                if (std::isalpha((unsigned char)c)) { hasAlpha = true; break; }
+            if (!hasAlpha) {
+                try { out.push_back(std::stof(token)); }
+                catch (...) {}
+            }
+        }
+        };
 
-    vertexList.resize(nVerts);
-    for (auto& v : vertexList) {
-        v.posicion = make_vector4f(0, 0, 0, 1);
-        v.color = make_vector4f(0.8f, 0.8f, 0.8f, 1.0f);
-        v.normal = make_vector3f(0, 0, 1);
-        v.texCoord = make_vector2f(0, 0);
-    }
+    dataTypesReading mode = vertices;
+    string line;
 
-    for (int i = 0; i < nVerts; ) {
-        if (!getline(file, line)) break;
-        line = trimLine(line);
-        if (isFrsComment(line)) continue;
-        auto d = parseFloats(line);
-        if ((int)d.size() < 3) continue;
-        vertexList[i].posicion = make_vector4f(d[0], d[1], d[2], 1.0f);
-        i++;
-    }
+    do {
+        switch (mode)
+        {
+        case vertices: {
+            nextLine(line);
+            int numVertex = std::stoi(line);
+            vertexList.resize(numVertex);
+            for (int i = 0; i < numVertex; i++) {
+                nextLine(line);
+                istringstream ss(line);
+                ss >> vertexList[i].posicion.x
+                    >> vertexList[i].posicion.y
+                    >> vertexList[i].posicion.z;
+                vertexList[i].posicion.w = 1.0f;
+            }
+            mode = faces;
+        } break;
 
-    // ---- Face indices ----
-    if (!nextMeaningful()) {
-        cout << "ERROR: no se pudo leer el numero de caras\n";
-        file.close();
+        case faces: {
+            nextLine(line);
+            int numFaces = std::stoi(line);
+            indexList.resize(numFaces * 3);
+            for (int i = 0; i < numFaces; i++) {
+                nextLine(line);
+                istringstream ss(line);
+                ss >> indexList[i * 3] >> indexList[i * 3 + 1] >> indexList[i * 3 + 2];
+            }
+            mode = colors;
+        } break;
+
+        case colors: {
+            nextLine(line);
+            int numColors = std::stoi(line);
+            for (int i = 0; i < numColors; i++) {
+                nextLine(line);
+                vector<float> data;
+                parseFloats(line, data);
+                if (data.size() < 4) continue;
+                int numIds = (int)data.size() - 4;
+                vec4float color = make_vec4float(
+                    data[numIds], data[numIds + 1], data[numIds + 2], data[numIds + 3]);
+                for (int j = 0; j < numIds; j++)
+                    vertexList[(int)data[j]].color = color;
+            }
+            mode = normals;
+        } break;
+
+        case normals: {
+            nextLine(line);
+            int numNormals = std::stoi(line);
+            for (int i = 0; i < numNormals; i++) {
+                nextLine(line);
+                vector<float> data;
+                parseFloats(line, data);
+                if (data.size() < 4) continue;
+                int numIds = (int)data.size() - 4;
+                vec4float normal = make_vec4float(
+                    data[numIds], data[numIds + 1], data[numIds + 2], data[numIds + 3]);
+                for (int j = 0; j < numIds; j++)
+                    vertexList[(int)data[j]].normal = normal;
+            }
+            mode = textureCoords;
+        } break;
+
+        case textureCoords: {
+            nextLine(line);
+            int numTC = std::stoi(line);
+            // linea extra de comentario antes de las coords
+            for (int i = 0; i < numTC; i++) {
+                nextLine(line);
+                vector<float> data;
+                parseFloats(line, data);
+                if (data.size() < 3) continue;
+                int idx = (int)data[0];
+                vertexList[idx].texturaCoords.x = data[1];
+                vertexList[idx].texturaCoords.y = data[2];
+            }
+            nextLine(line); textureFile = line;
+            nextLine(line); vertexShader = line;
+            nextLine(line); fragmentShader = line;
+            mode = done;
+        } break;
+        }
+    } while (!f.eof() && mode != done);
+
+    prg = new Shader();
+    prg->addShaderProgram(vertexShader);
+    prg->addShaderProgram(fragmentShader);
+    prg->linkProgram();
+
+    mat->textura = new Texture(textureFile);
+    mat->usaTextura = true;
+
+    // --- Construir collider de esfera ---
+    if (vertexList.empty() || indexList.empty())
+    {
+        cout << "ERROR: " << frsModel << " no se pudo cargar o esta vacio\n";
         return;
     }
-    int nFaces = stoi(line);
 
-    for (int i = 0; i < nFaces; ) {
-        if (!getline(file, line)) break;
-        line = trimLine(line);
-        if (isFrsComment(line)) continue;
-        auto d = parseFloats(line);
-        if ((int)d.size() < 3) continue;
-        idList.push_back((int)d[0]);
-        idList.push_back((int)d[1]);
-        idList.push_back((int)d[2]);
-        i++;
+    vec4float maxV = vertexList[0].posicion;
+    vec4float minV = vertexList[0].posicion;
+    for (auto& v : vertexList) {
+        maxV.x = std::fmaxf(v.posicion.x, maxV.x);
+        maxV.y = std::fmaxf(v.posicion.y, maxV.y);
+        maxV.z = std::fmaxf(v.posicion.z, maxV.z);
+        minV.x = std::fminf(v.posicion.x, minV.x);
+        minV.y = std::fminf(v.posicion.y, minV.y);
+        minV.z = std::fminf(v.posicion.z, minV.z);
     }
 
-    // ---- Remaining sections: colors, normals, texcoords, file paths ----
-    // FRS format stores these after the face data in this order:
-    //   color groups:   "v0 v1 ...  r g b a"  (last 4 = rgba, rest = vertex IDs)
-    //   normal groups:  "v0 v1 ...  nx ny nz 0"  (last 4 = normal+pad, rest = vertex IDs)
-    //   texcoords:      "v u,v"  (space-separated id, comma-separated uv)
-    //   file paths:     one path per line, no spaces
-    string vsFile, fsFile, texFile;
-    float matKa = 0.3f, matKd = 0.8f, matKs = 0.5f;
-    int matShiny = 32;
+    vec4float centro;
+    centro.x = (maxV.x + minV.x) * 0.5f;
+    centro.y = (maxV.y + minV.y) * 0.5f;
+    centro.z = (maxV.z + minV.z) * 0.5f;
+    centro.w = 1.0f;
 
-    while (getline(file, line)) {
-        line = trimLine(line);
-        if (isFrsComment(line)) continue;
-
-        // File paths have no spaces and end with a known extension.
-        if (line.find(' ') == string::npos) {
-            auto ends = [&](const string& suffix) {
-                return line.size() >= suffix.size() &&
-                    line.compare(line.size() - suffix.size(), suffix.size(), suffix) == 0;
-                };
-            if (ends(".vertex")) { vsFile = line; continue; }
-            if (ends(".fragment")) { fsFile = line; continue; }
-            if (ends(".png") || ends(".jpg") || ends(".bmp")) { texFile = line; continue; }
-            // Pure count lines (single integer) fall here; skip them.
-            continue;
-        }
-
-        // Texture-coordinate lines contain a comma: "id u,v"
-        if (line.find(',') != string::npos) {
-            istringstream ss(line);
-            int id; string uv;
-            if (ss >> id >> uv) {
-                size_t comma = uv.find(',');
-                if (comma != string::npos && id >= 0 && id < nVerts) {
-                    try {
-                        float u = stof(uv.substr(0, comma));
-                        float v = stof(uv.substr(comma + 1));
-                        vertexList[id].texCoord = make_vector2f(u, v);
-                    }
-                    catch (...) {}
-                }
-            }
-            continue;
-        }
-
-        // Color/normal group lines: all numeric, last 4 values are the attribute,
-        // preceding values are the vertex IDs that receive it.
-        // Normals have a padding value of 0 as the 4th component ("0.0f" in file);
-        // colors have alpha (typically 1.0) as the 4th component.
-        auto d = parseFloats(line);
-        if ((int)d.size() < 4) continue;
-
-        float pad = d.back();
-        float x = d[d.size() - 4];
-        float y = d[d.size() - 3];
-        float z = d[d.size() - 2];
-        bool isNorm = fabsf(pad) < 0.01f;
-
-        for (int i = 0; i < (int)d.size() - 4; i++) {
-            int id = (int)d[i];
-            if (id < 0 || id >= nVerts) continue;
-            if (isNorm)
-                vertexList[id].normal = make_vector3f(x, y, z);
-            else
-                vertexList[id].color = make_vector4f(x, y, z, pad);
-        }
-    }
-    file.close();
-
-    // ---- Shader program ----
-    if (prg != nullptr) { delete prg; prg = nullptr; }
-    prg = new Program();
-    prg->addShader("data/program.vertex");
-    prg->addShader("data/program.fragment");
-    prg->linkProgram();
-    prg->readVarList();
-
-    uniformMVPName = "MVP";
-
-    // ---- Material / texture ----
-    if (mat != nullptr) { delete mat; mat = nullptr; }
-    if (!texFile.empty()) {
-        mat = new Material(texFile, matKa, matKd, matKs);
-        mat->shiny = matShiny;
+    float radio = 0.0f;
+    for (auto& v : vertexList) {
+        vec4float d = v.posicion - centro;
+        float dist = std::sqrtf(d.x * d.x + d.y * d.y + d.z * d.z);
+        if (dist > radio) radio = dist;
     }
 
-    cout << "FRS cargado correctamente:\n";
-    cout << "Vertices: " << vertexList.size() << "\n";
-    cout << "Indices: " << idList.size() << "\n";
+    coll = new Sphere();
+    coll->center = centro;
+    coll->centerPrime = centro;
+    coll->radius = radio;
+    coll->max = maxV;
+    coll->min = minV;
+
+    auto idx = indexList.begin();
+    while (idx != indexList.end()) {
+        int i0 = *idx; idx++;
+        int i1 = *idx; idx++;
+        int i2 = *idx; idx++;
+
+        vec4float p0 = vertexList[i0].posicion;
+        vec4float p1 = vertexList[i1].posicion;
+        vec4float p2 = vertexList[i2].posicion;
+
+        particle3D* p = new particle3D();
+        p->pos.x = (p0.x + p1.x + p2.x) / 3.0f;
+        p->pos.y = (p0.y + p1.y + p2.y) / 3.0f;
+        p->pos.z = (p0.z + p1.z + p2.z) / 3.0f;
+        p->pos.w = 1.0f;
+        p->size.x = std::fmaxf(p0.x, std::fmaxf(p1.x, p2.x)) - std::fminf(p0.x, std::fminf(p1.x, p2.x));
+        p->size.y = std::fmaxf(p0.y, std::fmaxf(p1.y, p2.y)) - std::fminf(p0.y, std::fminf(p1.y, p2.y));
+        p->size.z = std::fmaxf(p0.z, std::fmaxf(p1.z, p2.z)) - std::fminf(p0.z, std::fminf(p1.z, p2.z));
+        coll->particleList.push_back(p);
+    }
 }
 
-void Object3D::move(double timeStep)
+
+#include "System.h"
+
+void Ship::moveObject(double timeStep)
 {
-    auto speed = 2.f;
+    float speed = 0.5f;
+    if (EventManager::keyMap[GLFW_KEY_A])
+        posicion.x -= speed * timeStep;
+    if (EventManager::keyMap[GLFW_KEY_D])
+        posicion.x += speed * timeStep;
 
-    if (EventManager::keyMap[GLFW_KEY_D]) rotacion.y += speed * static_cast<float>(timeStep);
-    if (EventManager::keyMap[GLFW_KEY_A]) rotacion.y -= speed * static_cast<float>(timeStep);
-
-    updateModelMatrix();
+    if (EventManager::keyMap[GLFW_KEY_SPACE])
+    {
+        Bullet* b = new Bullet("data/ship.frs");
+        b->posicion = posicion;
+        b->rotacion.z = 90;
+        b->escalado = { 0.25f, 0.25f, 0.25f, 1.0f };
+        b->direccion = { 0, 1, 0, 0 };
+        System::render->addObject(b);
+    }
 }
 
-void Object3D::updateModelMatrix()
+void Bullet::moveObject(double timeStep)
 {
-    Matriz4x4f T = make_translate(posicion.x, posicion.y, posicion.z);
-    Matriz4x4f R = make_rotate(rotacion.x, rotacion.y, rotacion.z);
-    Matriz4x4f S = make_scale(escala.x, escala.y, escala.z);
+    float speed = 5.0f;
+    this->posicion = posicion + direccion * speed * timeStep;
 
-    modelMatrix = T * R * S;
+    if (posicion.y > 10)
+        this->active = false;
+
+    auto collList = System::render->getCollisions(this, enemyType);
+    if (direccion.y > 0 && collList.size() > 0)
+        for (auto& o : collList)
+            o->active = false;
+}
+
+void Enemy::moveObject(double timeStep)
+{
+    float speed = 1.0f;
+    this->posicion.x += speed * timeStep;
+
+    if (posicion.x > 5)
+        this->posicion.x = -5;
+
+    if ((std::rand() % 180) == 0)
+    {
+        Bullet* b = new Bullet("data/ship.frs");
+        b->posicion = posicion;
+        b->rotacion.z = 90;
+        b->escalado = { 0.25f, 0.25f, 0.25f, 1.0f };
+        b->direccion = { 0, -1, 0, 0 };
+        System::render->addObject(b);
+    }
 }

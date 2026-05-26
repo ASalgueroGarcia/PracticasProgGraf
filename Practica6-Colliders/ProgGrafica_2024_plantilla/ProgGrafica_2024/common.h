@@ -2,11 +2,10 @@
 #include <iostream>
 #pragma once
 #define _USE_MATH_DEFINES
-#ifdef GLAD_BIN // Macro que activa la compilacion de un archivo .h en el proyecto
+#ifdef GLAD_BIN
 #define GLAD_GL_IMPLEMENTATION
 #endif
 #include <glad/gl.h>
-// #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vector>
 

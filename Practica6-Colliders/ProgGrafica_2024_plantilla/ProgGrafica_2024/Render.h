@@ -1,36 +1,37 @@
 #pragma once
-
-#include "InputManager.h"
 #include "Object3D.h"
 #include "Camera.h"
-#include "Light.h"
-#include "common.h"
+#include "Luz.h"
 
 class Render
 {
 public:
-	Render(float anchura, float altura);
+    typedef struct {
+        unsigned int bufferId;
+        unsigned int vertexBufferId;
+        unsigned int indexBufferId;
+    } bufferObject_t;
 
-	typedef struct {
-		unsigned int bufferId;
-		unsigned int vertexBufferId;
-		unsigned int indexBufferId;
-		unsigned int shaderProgram;
-	} bufferObject_t;
+    // Camara que mira al centro {0,0,0} desde {0,0,20}
+    Camera* cam = new Camera({ 0,0,20,1 }, { 0,0,0,1 });
+    Luz* luz = new Luz({ 0,0,3,1 });
 
-	Camera* cam;
-	Light* light;
+    vector<Object3D*> objectList;     // lista de objetos activos
+    vector<Object3D*> nextObjectList; // lista de objetos pendientes de añadir
 
-	GLFWwindow* window;
-	std::vector<Object3D*> objectList;
-	std::map<int, bufferObject_t> bufferList;
+    map<unsigned int, bufferObject_t> bufferObjectList;
+    bool salir = false;
+    GLFWwindow* window = nullptr;
 
-	void initGL();
-	void putObject(Object3D* obj);
-	void removeObject(Object3D* obj);
-	void putCamera(Camera* cam);
-	void putLight(Light* light);
-	Light* getLight();
-	void DrawGL();
-	void mainLoop();
+    Render();
+
+    void setupObject(Object3D* obj);
+    void addObject(Object3D* obj);
+    void deleteObject(Object3D* obj);
+
+    vector<Object3D*> getCollisions(Object3D* obj, int objType);
+
+    void updateObjects(double timeStep);
+    void drawObjects();
+    void mainLoop();
 };

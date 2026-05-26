@@ -1,195 +1,197 @@
 #include "Render.h"
-#include "Object3D.h"
 #include "EventManager.h"
-#include <cstring>
-#include <algorithm>
 
-Render::Render(float anchura, float altura)
+Render::Render()
 {
-	this->window = glfwCreateWindow(anchura, altura, "ASG y MAVS: PR5 - Luz y Texturas", nullptr, nullptr);
-	this->light = nullptr;
-	initGL();
+    if (glfwInit() != GLFW_TRUE)
+    {
+        cout << "ERROR Iniciando GLFW\n";
+    }
+    else
+    {
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
+        this->window = glfwCreateWindow(640, 480, "PRGR 2026", nullptr, nullptr);
+        glfwMakeContextCurrent(window);
+        gladLoadGL(glfwGetProcAddress);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        this->salir = false;
+        EventManager::initEventManager(window);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 }
 
-void Render::initGL()
+void Render::setupObject(Object3D* obj)
 {
-	glfwMakeContextCurrent(window);
-	gladLoadGL(glfwGetProcAddress);
-	glEnable(GL_DEPTH_TEST);
+    bufferObject_t bo = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF };
+    glGenVertexArrays(1, &bo.bufferId);
+    glGenBuffers(1, &bo.vertexBufferId);
+    glGenBuffers(1, &bo.indexBufferId);
 
-	int fbw = 0, fbh = 0;
-	glfwGetFramebufferSize(window, &fbw, &fbh);
-	if (fbw > 0 && fbh > 0) {
-		glViewport(0, 0, fbw, fbh);
-	}
+    glBindVertexArray(bo.bufferId);
+    glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_t) * obj->vertexList.size(),
+        obj->vertexList.data(), GL_STATIC_DRAW);
 
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	EventManager::initEventManager(this->window);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * obj->indexList.size(),
+        obj->indexList.data(), GL_STATIC_DRAW);
+
+    bufferObjectList[obj->objectId] = bo;
 }
 
-void Render::putObject(Object3D* obj)
+void Render::addObject(Object3D* obj)
 {
-	bufferObject_t bo = { 0, 0, 0 };
-	glGenVertexArrays(1, &bo.bufferId);
-	glGenBuffers(1, &bo.vertexBufferId);
-	glGenBuffers(1, &bo.indexBufferId);
-
-	glBindVertexArray(bo.bufferId);
-
-	glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
-	glBufferData(GL_ARRAY_BUFFER,
-		sizeof(vertex_t) * obj->vertexList.size(),
-		obj->vertexList.data(),
-		GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		sizeof(unsigned int) * obj->idList.size(),
-		obj->idList.data(),
-		GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	bufferList[obj->objId] = bo;
-	objectList.push_back(obj);
+    setupObject(obj);
+    nextObjectList.push_back(obj);
 }
 
-void Render::removeObject(Object3D* obj)
+void Render::deleteObject(Object3D* obj)
 {
-	auto object = bufferList.find(obj->objId);
-
-	if (object != bufferList.end())
-	{
-		bufferObject_t& bo = object->second;
-
-		glDeleteBuffers(1, &bo.vertexBufferId);
-		glDeleteBuffers(1, &bo.indexBufferId);
-		glDeleteVertexArrays(1, &bo.bufferId);
-
-		bufferList.erase(object);
-	}
-
-	objectList.erase(
-		std::remove_if(objectList.begin(), objectList.end(),
-			[&](Object3D* o)
-			{
-				return o->objId == obj->objId;
-			}),
-		objectList.end()
-	);
+    auto it = bufferObjectList.find(obj->objectId);
+    if (it != bufferObjectList.end())
+    {
+        glDeleteVertexArrays(1, &it->second.bufferId);
+        glDeleteBuffers(1, &it->second.vertexBufferId);
+        glDeleteBuffers(1, &it->second.indexBufferId);
+        bufferObjectList.erase(it);
+    }
+    delete obj;
 }
 
-void Render::putCamera(Camera* cam)
+vector<Object3D*> Render::getCollisions(Object3D* obj, int objType)
 {
-	this->cam = cam;
+    vector<Object3D*> result;
+
+    if (!obj->coll)
+        return result;
+
+    for (auto& other : objectList)
+    {
+        if (other == obj)             continue;
+        if (!other->active)           continue;
+        if (other->type != objType)   continue;
+        if (!other->coll)             continue;
+
+        if (obj->coll->collisionTest(other->coll))
+            result.push_back(other);
+    }
+    return result;
 }
 
-void Render::putLight(Light* light)
+void Render::updateObjects(double timeStep)
 {
-	this->light = light;
+    cam->moveObject(timeStep);
+    luz->moveObject(timeStep);
+
+    for (auto& obj : objectList)
+    {
+        obj->moveObject(timeStep);
+        if (obj->coll)
+            obj->coll->updateCollider(obj->computeModelMatrix());
+    }
+
+    map<float, vector<Object3D*>> aux;
+    for (auto& obj : objectList)
+    {
+        if (obj->active)
+        {
+            float dist = distance(cam->pos, obj->posicion);
+            aux[dist].push_back(obj);
+        }
+        else
+        {
+            deleteObject(obj);
+        }
+    }
+
+    for (auto& obj : nextObjectList)
+    {
+        float dist = distance(cam->pos, obj->posicion);
+        aux[dist].push_back(obj);
+    }
+    nextObjectList.clear();
+
+    objectList.clear();
+    for (auto l = aux.rbegin(); l != aux.rend(); ++l)
+    {
+        int size = (int)l->second.size();
+        int origSize = (int)objectList.size();
+        objectList.resize(origSize + size);
+        std::memcpy(objectList.data() + origSize,
+            l->second.data(),
+            size * sizeof(Object3D*));
+    }
 }
 
-Light* Render::getLight()
+void Render::drawObjects()
 {
-	return this->light;
-}
+    for (auto& obj : objectList)
+    {
+        obj->prg->useProgram();
+        auto bo = bufferObjectList[obj->objectId];
+        glBindVertexArray(bo.bufferId);
+        glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
 
-void Render::DrawGL()
-{
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        matrix4x4f model = obj->computeModelMatrix();
+        auto mvp = transpose(
+            cam->computeProjectionMatrix(-0.001f, 1000.0f, 3.1416f / 4.0f, 4.0f / 3.0f) *
+            cam->computeViewMatrix() *
+            model);
 
-	for (auto obj : objectList)
-	{
-		auto& bo = bufferList[obj->objId];
+        obj->prg->setMatrix(mvp, "MVP");
+        obj->prg->setMatrix(transpose(model), "M");
+        obj->prg->setCamera(cam);
+        obj->prg->setLight(luz);
+        obj->prg->setMaterial(obj->mat);
 
-		obj->prg->use();
+        obj->prg->setAttributeData("vPos", 4, GL_FLOAT, sizeof(vertex_t), (void*)offsetof(vertex_t, posicion));
+        obj->prg->setAttributeData("vColor", 4, GL_FLOAT, sizeof(vertex_t), (void*)offsetof(vertex_t, color));
+        obj->prg->setAttributeData("vNormal", 4, GL_FLOAT, sizeof(vertex_t), (void*)offsetof(vertex_t, normal));
+        obj->prg->setAttributeData("vTextureCoords", 4, GL_FLOAT, sizeof(vertex_t), (void*)offsetof(vertex_t, texturaCoords));
 
-		Matriz4x4f view = cam->getMatrixLookAt();
-		Matriz4x4f proj = cam->getMatrixPerspective();
-		Matriz4x4f MVP = proj * view * obj->modelMatrix;
-
-		obj->prg->setUniformData(obj->uniformMVPName, MVP);
-		obj->prg->setUniformData("modelMatrix", obj->modelMatrix);
-
-		if (light != nullptr)
-		{
-			obj->prg->setUniformLight(light);
-		}
-
-		if (obj->mat != nullptr)
-		{
-			obj->prg->setUniformMaterial(obj->mat);
-
-			if (obj->mat->texture != nullptr && obj->mat->texture->textureId != 0)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, obj->mat->texture->textureId);
-				obj->prg->setUniformInt("textureData", 0);
-			}
-		}
-		else
-		{
-			obj->prg->setUniformInt("usaTextura", 0);
-			obj->prg->setUniformInt("shiny", 1);
-			obj->prg->setUniformFloat("materialAlpha", 1.0f);
-			obj->prg->setUniformFloat("materialKa", 0.3f);
-			obj->prg->setUniformFloat("materialKd", 0.8f);
-			obj->prg->setUniformFloat("materialKs", 0.5f);
-		}
-
-		glBindVertexArray(bo.bufferId);
-		glBindBuffer(GL_ARRAY_BUFFER, bo.vertexBufferId);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bo.indexBufferId);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, posicion));
-
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, color));
-
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, normal));
-
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, texCoord));
-
-		glDrawElements(
-			GL_TRIANGLES,
-			static_cast<GLsizei>(obj->idList.size()),
-			GL_UNSIGNED_INT,
-			0
-		);
-
-		glBindVertexArray(0);
-	}
+        glDrawElements(GL_TRIANGLES, (GLsizei)obj->indexList.size(), GL_UNSIGNED_INT, nullptr);
+    }
 }
 
 void Render::mainLoop()
 {
-	float lastTime = glfwGetTime();
+    double lastTime = 0;
+    double newTime = glfwGetTime();
+    double deltaTime = newTime - lastTime;
 
-	while (!glfwWindowShouldClose(window))
-	{
-		float currentTime = glfwGetTime();
-		float deltaTime = currentTime - lastTime;
-		lastTime = currentTime;
+    while (!salir)
+    {
+        newTime = glfwGetTime();
+        deltaTime = newTime - lastTime;
+        lastTime = newTime;
 
-		EventManager::updateEvents();
+        updateObjects(deltaTime);
 
-		if (cam)
-			cam->move(deltaTime);
+        if (EventManager::keyMap[GLFW_KEY_ESCAPE] || glfwWindowShouldClose(window))
+            salir = true;
 
-		if (light)
-			light->move(deltaTime);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        drawObjects();
+        glfwSwapBuffers(window);
+        EventManager::updateEvents();
+    }
 
-		for (auto obj : objectList)
-			obj->move(deltaTime);
+    for (auto& obj : objectList)
+        deleteObject(obj);
+    objectList.clear();
 
-		DrawGL();
+    for (auto& obj : nextObjectList)
+        deleteObject(obj);
+    nextObjectList.clear();
 
-		glfwSwapBuffers(window);
-	}
+    glfwTerminate();
 }
